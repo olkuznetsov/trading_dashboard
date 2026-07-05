@@ -1,0 +1,15 @@
+# Secrets & runtime
+.env
+.env.*
+*.log
+logs/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+
+# OS
+.DS_Store
+*.swp

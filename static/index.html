@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEURAL TRADE HQ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #05060a;
+      --bg-card:     #0c0e18;
+      --bg-hover:    #12152a;
+      --sidebar:     #080a14;
+      --border:      #1a1d3a;
+      --text:        #c8d0e0;
+      --text-dim:    #3a4060;
+      --cyan:        #00f0ff;
+      --magenta:     #ff00aa;
+      --green:       #00ff6a;
+      --red:         #ff2255;
+      --yellow:      #ffe44d;
+      --purple:      #b040ff;
+      --font-pixel:  'Press Start 2P', monospace;
+      --font-mono:   'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      --sidebar-w:   200px;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      display: flex;
+      flex-direction: row;
+    }
+
+    /* CRT scanlines */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg,
+        rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px,
+        transparent 1px, transparent 3px);
+      pointer-events: none;
+      z-index: 9999;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.5) 100%);
+      pointer-events: none;
+      z-index: 9998;
+    }
+    .scan-beam {
+      position: fixed; left: 0; right: 0; height: 2px;
+      background: rgba(0,240,255,0.04);
+      z-index: 9997; pointer-events: none;
+      animation: scan 8s linear infinite;
+    }
+    @keyframes scan { 0% { top: -2px; } 100% { top: 100%; } }
+
+    /* ── LEFT SIDEBAR ─────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--sidebar);
+      border-right: 2px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar-logo { padding: 0 16px 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+    .logo-text {
+      font-family: var(--font-pixel); font-size: 9px; color: var(--cyan);
+      text-shadow: 0 0 10px var(--cyan), 0 0 30px rgba(0,240,255,0.3);
+      line-height: 1.8; animation: neon-flicker 5s ease-in-out infinite;
+    }
+    .logo-text .accent { color: var(--magenta); text-shadow: 0 0 10px var(--magenta); }
+    @keyframes neon-flicker { 0%,100%{opacity:1} 93%{opacity:.8} 94%{opacity:1} 97%{opacity:.9} 98%{opacity:1} }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 10px; padding: 3px 8px;
+      font-family: var(--font-pixel); font-size: 7px;
+    }
+    .status-pill.online  { background: rgba(0,255,106,0.1); color: var(--green); border: 1px solid rgba(0,255,106,0.3); }
+    .status-pill.offline { background: rgba(255,34,85,0.1);  color: var(--red);   border: 1px solid rgba(255,34,85,0.3); }
+    .status-dot { width: 5px; height: 5px; }
+    .online  .status-dot { background: var(--green); box-shadow: 0 0 5px var(--green); animation: blink 1.5s infinite; }
+    .offline .status-dot { background: var(--red); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+    .sidebar-pid { font-size: 10px; color: var(--text-dim); padding: 4px 16px 0; }
+
+    .nav { flex: 1; display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      font-family: var(--font-pixel); font-size: 8px; color: var(--text-dim);
+      cursor: pointer; border-left: 2px solid transparent;
+      transition: all 0.15s; text-transform: uppercase; letter-spacing: 1px; user-select: none;
+    }
+    .nav-item:hover { color: var(--text); background: var(--bg-hover); }
+    .nav-item.active {
+      color: var(--cyan); border-left-color: var(--cyan);
+      background: rgba(0,240,255,0.05); text-shadow: 0 0 6px rgba(0,240,255,0.4);
+    }
+    .nav-icon { font-size: 12px; width: 16px; text-align: center; }
+
+    .sidebar-bottom { padding: 16px; border-top: 1px solid var(--border); }
+    .btn-toggle {
+      width: 100%; padding: 10px 0;
+      font-family: var(--font-pixel); font-size: 7px;
+      border: 2px solid; cursor: pointer; letter-spacing: 1px;
+      transition: all 0.15s; text-align: center;
+    }
+    .btn-toggle:active { transform: scale(0.96); }
+    .btn-toggle.start { background: rgba(0,255,106,0.1); border-color: rgba(0,255,106,0.4); color: var(--green); }
+    .btn-toggle.start:hover { background: rgba(0,255,106,0.2); box-shadow: 0 0 15px rgba(0,255,106,0.2); }
+    .btn-toggle.stop  { background: rgba(255,34,85,0.1);  border-color: rgba(255,34,85,0.4);  color: var(--red); }
+    .btn-toggle.stop:hover  { background: rgba(255,34,85,0.2);  box-shadow: 0 0 15px rgba(255,34,85,0.2); }
+    .btn-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+    .sidebar-clock {
+      font-family: var(--font-pixel); font-size: 6px; color: var(--text-dim);
+      text-align: center; margin-top: 10px; line-height: 1.8; white-space: pre;
+    }
+
+    /* ── MAIN ─────────────────────────────────── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+    /* PIXEL OFFICE — PixiJS canvas host */
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 48vh;
+      min-height: 300px;
+      border-bottom: 2px solid var(--border);
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #070a16;
+    }
+    .scene canvas { display: block; }
+
+    /* ── CONTENT ──────────────────────────────── */
+    .content { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .panel.active#panel-logs { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); padding: 14px; position: relative; }
+    .stat-card::before { content:''; position:absolute; top:0; left:0; width:10px; height:10px; border-top:2px solid var(--cyan); border-left:2px solid var(--cyan); }
+    .stat-card::after  { content:''; position:absolute; bottom:0; right:0; width:10px; height:10px; border-bottom:2px solid var(--cyan); border-right:2px solid var(--cyan); }
+    .stat-label { font-family: var(--font-pixel); font-size: 6px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+    .stat-value { font-size: 26px; font-weight: 700; }
+    .stat-value.up   { color: var(--green); text-shadow: 0 0 10px rgba(0,255,106,0.4); }
+    .stat-value.down { color: var(--red);   text-shadow: 0 0 10px rgba(255,34,85,0.4); }
+    .stat-value.neutral { color: var(--text); }
+    .stat-sub { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+
+    .section-title { font-family: var(--font-pixel); font-size: 8px; color: var(--cyan); letter-spacing: 2px; margin: 14px 0 12px; text-shadow: 0 0 6px rgba(0,240,255,0.3); }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .data-table th { text-align: left; padding: 8px 10px; color: var(--text-dim); font-size: 7px; font-family: var(--font-pixel); text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid var(--border); }
+    .data-table td { padding: 8px 10px; border-bottom: 1px solid rgba(26,29,58,0.6); }
+    .data-table tr:hover td { background: var(--bg-hover); }
+    .long  { color: var(--green); } .short { color: var(--red); }
+    .win   { color: var(--green); } .loss  { color: var(--red); }
+
+    .pos-card { background: var(--bg-card); border: 1px solid var(--border); padding: 14px; margin-bottom: 10px; position: relative; }
+    .pos-card::before { content:''; position:absolute; top:0; left:0; bottom:0; width:3px; }
+    .pos-card.long-card::before  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .pos-card.short-card::before { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+    .pos-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .pos-symbol { font-family: var(--font-pixel); font-size: 10px; }
+    .pos-side   { font-family: var(--font-pixel); font-size: 7px; padding: 3px 10px; }
+    .pos-side.long  { background: rgba(0,255,106,0.1); color: var(--green); border: 1px solid rgba(0,255,106,0.4); }
+    .pos-side.short { background: rgba(255,34,85,0.1);  color: var(--red);   border: 1px solid rgba(255,34,85,0.4); }
+    .pos-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:8px; }
+    .pos-key { font-family: var(--font-pixel); font-size: 6px; color: var(--text-dim); text-transform: uppercase; }
+    .pos-val { font-size: 13px; font-weight: 600; color: var(--cyan); margin-top: 2px; }
+
+    /* intel cards (brains tab) */
+    .intel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+    .intel-card { background: var(--bg-card); border: 1px solid var(--border); padding: 14px; }
+    .intel-title { font-family: var(--font-pixel); font-size: 8px; letter-spacing: 1px; margin-bottom: 10px; }
+    .intel-card ul { list-style: none; }
+    .intel-card li { padding: 5px 0; border-bottom: 1px solid rgba(26,29,58,0.5); font-size: 12px; line-height: 1.5; }
+    .intel-card li:last-child { border-bottom: none; }
+    .intel-key { color: var(--text-dim); }
+
+    .log-wrap { background: #030408; border: 2px solid var(--border); display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .log-bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-bottom: 2px solid var(--border); background: var(--bg-card); }
+    .log-bar-left { display: flex; align-items: center; gap: 8px; font-family: var(--font-pixel); font-size: 7px; color: var(--text-dim); }
+    .ws-dot { width: 6px; height: 6px; background: var(--red); }
+    .ws-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .log-filter { background: var(--bg); border: 1px solid var(--border); color: var(--cyan); font-family: var(--font-mono); font-size: 11px; padding: 4px 8px; width: 200px; }
+    .log-filter:focus { outline: none; border-color: var(--cyan); }
+    .log-out { flex: 1; overflow-y: auto; padding: 10px; font-size: 11px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; color: #4a5268; }
+    .l-info    { color: var(--cyan); }
+    .l-warn    { color: var(--yellow); }
+    .l-error   { color: var(--red); }
+    .l-debug   { color: #2a2e48; }
+    .l-success { color: var(--green); }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
+
+    .empty { text-align: center; padding: 40px; color: var(--text-dim); font-family: var(--font-pixel); font-size: 8px; }
+    /* ── MOBILE ───────────────────────────────── */
+    @media (max-width: 768px) {
+      body { flex-direction: column; height: 100dvh; }
+      .sidebar {
+        width: 100%; height: auto; flex-direction: row; align-items: center;
+        gap: 10px; padding: 10px 12px;
+        border-right: none; border-bottom: 2px solid var(--border);
+      }
+      .sidebar-logo { padding: 0; border-bottom: none; margin-bottom: 0; flex-shrink: 0; }
+      .sidebar-pid { display: none; }
+      .nav {
+        flex-direction: row; padding: 0; gap: 2px;
+        overflow-x: auto; min-width: 0; -webkit-overflow-scrolling: touch;
+      }
+      .nav-item { padding: 8px 9px; border-left: none; border-bottom: 2px solid transparent; flex-shrink: 0; }
+      .nav-item.active { border-left-color: transparent; border-bottom-color: var(--cyan); }
+      .sidebar-bottom { border-top: none; padding: 0; margin-left: auto; flex-shrink: 0; }
+      .btn-toggle { width: auto; padding: 9px 10px; }
+      .sidebar-clock { display: none; }
+      .scene { height: auto; aspect-ratio: 1056 / 480; min-height: 0; }
+      .content { padding: 12px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat-value { font-size: 20px; }
+      .panel.active { overflow-x: auto; }
+      .data-table { min-width: 540px; }
+    }
+  </style>
+</head>
+<body>
+<div class="scan-beam"></div>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text">NEURAL<span class="accent">_</span><br>TRADE<span class="accent"> HQ</span></div>
+    <div id="statusPill" class="status-pill offline">
+      <div class="status-dot"></div>
+      <span id="statusText">OFFLINE</span>
+    </div>
+    <div id="sidebarPid" class="sidebar-pid"></div>
+  </div>
+
+  <nav class="nav">
+    <div class="nav-item active" data-panel="overview"><span class="nav-icon">▤</span> Overview</div>
+    <div class="nav-item" data-panel="positions"><span class="nav-icon">◈</span> Positions</div>
+    <div class="nav-item" data-panel="brains"><span class="nav-icon">◉</span> Brains</div>
+    <div class="nav-item" data-panel="history"><span class="nav-icon">◎</span> History</div>
+    <div class="nav-item" data-panel="logs"><span class="nav-icon">▶</span> Live Logs</div>
+  </nav>
+
+  <div class="sidebar-bottom">
+    <button id="btnToggle" class="btn-toggle start" onclick="toggleBot()">▶ START BOT</button>
+    <div id="clock" class="sidebar-clock"></div>
+  </div>
+</aside>
+
+<div class="main">
+
+  <!-- PIXEL OFFICE -->
+  <div class="scene" id="scene"></div>
+
+  <div class="content">
+
+    <div id="panel-overview" class="panel active">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Bot</div>
+          <div id="statBots" class="stat-value neutral">—</div>
+          <div id="statPid2" class="stat-sub">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total P&amp;L</div>
+          <div id="statPnl" class="stat-value neutral">$0.00</div>
+          <div id="statTrades" class="stat-sub">0 trades</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Win Rate</div>
+          <div id="statWinRate" class="stat-value neutral">0%</div>
+          <div id="statWL" class="stat-sub">0W / 0L</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Open Pos</div>
+          <div id="statOpen" class="stat-value neutral">0</div>
+          <div id="statSymbols" class="stat-sub">—</div>
+        </div>
+      </div>
+      <div class="section-title">&gt; Recent Trades_</div>
+      <table class="data-table">
+        <thead><tr><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>P&amp;L</th><th>Dur</th><th>Result</th></tr></thead>
+        <tbody id="tbl-recent"><tr><td colspan="7" class="empty">Initializing...</td></tr></tbody>
+      </table>
+    </div>
+
+    <div id="panel-positions" class="panel">
+      <div id="posContainer"><div class="empty">Scanning...</div></div>
+    </div>
+
+    <div id="panel-brains" class="panel">
+      <div class="intel-grid">
+        <div class="intel-card">
+          <div class="intel-title" style="color:var(--yellow)">◉ BRAIN3 — COIN CAUTIONS</div>
+          <ul id="intelCautions"><li class="intel-key">loading...</li></ul>
+        </div>
+        <div class="intel-card">
+          <div class="intel-title" style="color:var(--purple)">◉ BRAIN4 — TUNED PARAMS</div>
+          <ul id="intelConfig"><li class="intel-key">loading...</li></ul>
+        </div>
+        <div class="intel-card">
+          <div class="intel-title" style="color:#9aa6e8">👻 SHADOW — EXIT QUALITY</div>
+          <ul id="intelShadow"><li class="intel-key">loading...</li></ul>
+        </div>
+        <div class="intel-card">
+          <div class="intel-title" style="color:var(--green)">📝 PAPER — FILTER ACCURACY</div>
+          <ul id="intelPaper"><li class="intel-key">loading...</li></ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="panel-history" class="panel">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Symbol</th><th>Side</th><th>Entry</th><th>Exit</th><th>Lev</th><th>P&amp;L $</th><th>P&amp;L %</th><th>Time</th><th>Result</th></tr></thead>
+        <tbody id="tbl-history"><tr><td colspan="10" class="empty">Loading...</td></tr></tbody>
+      </table>
+    </div>
+
+    <div id="panel-logs" class="panel">
+      <div class="log-wrap">
+        <div class="log-bar">
+          <div class="log-bar-left">
+            <div id="wsDot" class="ws-dot"></div>
+            <span id="wsLabel">LINK DOWN</span>
+          </div>
+          <input id="logFilter" class="log-filter" type="text" placeholder="> filter..." oninput="filterLogs()"/>
+        </div>
+        <div id="logOut" class="log-out">Establishing uplink...</div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ── office bus: dashboard → scene ──────────────────────────────
+window.OfficeBus = { q: [], push(m) { this.q.push(m); this.flush && this.flush(); } };
+
+// ── navigation ─────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('panel-' + item.dataset.panel).classList.add('active');
+    if (item.dataset.panel === 'logs') {
+      requestAnimationFrame(() => {
+        const out = document.getElementById('logOut');
+        out.scrollTop = out.scrollHeight;
+        logAutoScroll = true;
+      });
+    }
+  });
+});
+
+// ── status polling ─────────────────────────────────────────────
+let botRunning = false;
+
+async function fetchStatus() {
+  try {
+    const data = await (await fetch('/api/status')).json();
+    applyStatus(data);
+    OfficeBus.push({ type: 'status', data });
+  } catch(e) {}
+}
+
+async function fetchBrains() {
+  try {
+    const data = await (await fetch('/api/brains')).json();
+    applyBrains(data);
+    OfficeBus.push({ type: 'brains', data });
+  } catch(e) {}
+}
+
+function applyStatus(data) {
+  const { bot, open_trades, closed_summary, recent_closed } = data;
+  botRunning = bot.running;
+
+  const pill = document.getElementById('statusPill');
+  const stxt = document.getElementById('statusText');
+  const btn  = document.getElementById('btnToggle');
+
+  if (bot.running) {
+    pill.className = 'status-pill online';
+    stxt.textContent = 'ONLINE';
+    btn.className = 'btn-toggle stop';
+    btn.textContent = '■ STOP BOT';
+    document.getElementById('statBots').textContent = 'ON';
+    document.getElementById('statBots').className = 'stat-value up';
+    document.getElementById('sidebarPid').textContent = 'PID ' + bot.pid;
+    document.getElementById('statPid2').textContent = 'PID ' + bot.pid;
+  } else {
+    pill.className = 'status-pill offline';
+    stxt.textContent = 'OFFLINE';
+    btn.className = 'btn-toggle start';
+    btn.textContent = '▶ START BOT';
+    document.getElementById('statBots').textContent = 'OFF';
+    document.getElementById('statBots').className = 'stat-value down';
+    document.getElementById('sidebarPid').textContent = '';
+    document.getElementById('statPid2').textContent = '—';
+  }
+
+  const pnl = closed_summary.total_pnl_usdt;
+  const pe = document.getElementById('statPnl');
+  pe.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(4);
+  pe.className = 'stat-value ' + (pnl > 0 ? 'up' : pnl < 0 ? 'down' : 'neutral');
+  document.getElementById('statTrades').textContent = closed_summary.total_trades + ' trades';
+
+  const we = document.getElementById('statWinRate');
+  we.textContent = closed_summary.win_rate + '%';
+  we.className = 'stat-value ' + (closed_summary.win_rate >= 50 ? 'up' : closed_summary.win_rate > 0 ? 'down' : 'neutral');
+  document.getElementById('statWL').textContent = closed_summary.wins + 'W / ' + closed_summary.losses + 'L';
+
+  const keys = Object.keys(open_trades);
+  document.getElementById('statOpen').textContent = keys.length;
+  document.getElementById('statSymbols').textContent = keys.length ? keys.map(s => s.split('/')[0]).join(', ') : '—';
+
+  renderPositions(open_trades);
+  renderTable('tbl-recent',  recent_closed.slice(-5).reverse(), false);
+  renderTable('tbl-history', recent_closed.slice().reverse(), true);
+}
+
+function applyBrains(b) {
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  const li = (k, v) => `<li><span class="intel-key">${k}</span> ${v}</li>`;
+
+  const cu = document.getElementById('intelCautions');
+  cu.innerHTML = (b.cautions && b.cautions.length)
+    ? b.cautions.map(c => li(esc(c.symbol) + ':', esc(c.note))).join('')
+    : '<li class="intel-key">no active cautions</li>';
+
+  const cfg = b.config || {};
+  document.getElementById('intelConfig').innerHTML = [
+    li('confidence:', `LONG ≥ ${cfg.confidence_min_long ?? '—'} · SHORT ≥ ${cfg.confidence_min_short ?? '—'}`),
+    li('trail:', `${cfg.trail_activation_pct ?? '—'} act / ${cfg.trail_keep_pct ?? '—'} keep`),
+    li('hold:', `min ${cfg.brain2_min_hold_minutes ?? '—'}m · stale ${cfg.stale_minutes ?? '—'}m`),
+    li('why:', esc((cfg.updated_reason || '—').slice(0, 180))),
+  ].join('');
+
+  const g = (b.shadow && b.shadow.global_stats) || {};
+  document.getElementById('intelShadow').innerHTML = [
+    li('tracking now:', b.shadow?.tracked ?? 0),
+    li('exits too early:', (g.pct_too_early ?? '—') + '%'),
+    li('avg missed PnL:', (g.avg_missed_pnl ?? '—') + '%'),
+    li('trades analyzed:', b.shadow?.total_trades ?? '—'),
+  ].join('');
+
+  const p = b.paper || {};
+  document.getElementById('intelPaper').innerHTML = [
+    li('blocked tracked:', p.total ?? 0),
+    li('filter correct:', `${p.filter_correct ?? 0} · wrong: ${p.filter_wrong ?? 0}`),
+    li('paper W/L:', `${p.wins ?? 0} / ${p.losses ?? 0}`),
+    li('top blocks:', esc((p.top_block_reasons || []).slice(0,3).map(x => x[0].split(':')[0]).join(', ') || '—')),
+  ].join('');
+}
+
+function renderPositions(trades) {
+  const c = document.getElementById('posContainer');
+  const keys = Object.keys(trades);
+  if (!keys.length) { c.innerHTML = '<div class="empty">No active positions</div>'; return; }
+  c.innerHTML = keys.map(key => {
+    const t = trades[key], isLong = t.side === 'buy', sym = key.split(':')[0];
+    return `<div class="pos-card ${isLong?'long-card':'short-card'}">
+      <div class="pos-header"><div class="pos-symbol">${sym}</div><div class="pos-side ${isLong?'long':'short'}">${isLong?'LONG':'SHORT'}</div></div>
+      <div class="pos-grid">
+        <div><div class="pos-key">Entry</div><div class="pos-val">$${t.entry_price}</div></div>
+        <div><div class="pos-key">Size</div><div class="pos-val">${t.quantity}</div></div>
+        <div><div class="pos-key">Leverage</div><div class="pos-val">${t.leverage}x</div></div>
+        <div><div class="pos-key">Score</div><div class="pos-val">${t.decision_score}</div></div>
+        <div><div class="pos-key">RSI</div><div class="pos-val">${t.technical_snapshot?.rsi_14||'—'}</div></div>
+        <div><div class="pos-key">Trend</div><div class="pos-val">${t.technical_snapshot?.trend||'—'}</div></div>
+      </div></div>`;
+  }).join('');
+}
+
+function renderTable(id, trades, full) {
+  const tb = document.getElementById(id);
+  if (!trades?.length) { tb.innerHTML = `<tr><td colspan="${full?10:7}" class="empty">No data</td></tr>`; return; }
+  tb.innerHTML = trades.map(t => {
+    const w = t.result==='WIN', l = t.side==='buy', sym = t.symbol.split(':')[0];
+    const dur = t.duration_minutes ? Math.round(t.duration_minutes)+'m' : '—';
+    const dt  = t.closed_at ? t.closed_at.slice(0,16).replace('T',' ') : '—';
+    if (full) return `<tr><td>${dt}</td><td>${sym}</td><td class="${l?'long':'short'}">${l?'LONG':'SHORT'}</td><td>$${t.entry_price}</td><td>$${t.exit_price||'—'}</td><td>${t.leverage}x</td><td class="${w?'win':'loss'}">${t.pnl_usdt>=0?'+':''}$${t.pnl_usdt?.toFixed(4)||0}</td><td class="${w?'win':'loss'}">${t.pnl_pct>=0?'+':''}${t.pnl_pct?.toFixed(2)||0}%</td><td>${dur}</td><td class="${w?'win':'loss'}">${t.result}</td></tr>`;
+    return `<tr><td>${sym}</td><td class="${l?'long':'short'}">${l?'LONG':'SHORT'}</td><td>$${t.entry_price}</td><td>$${t.exit_price||'—'}</td><td class="${w?'win':'loss'}">${t.pnl_usdt>=0?'+':''}$${t.pnl_usdt?.toFixed(4)||0}</td><td>${dur}</td><td class="${w?'win':'loss'}">${t.result}</td></tr>`;
+  }).join('');
+}
+
+async function toggleBot() {
+  const btn = document.getElementById('btnToggle');
+  btn.disabled = true;
+  try {
+    await fetch(botRunning ? '/api/bot/stop' : '/api/bot/start', { method: 'POST' });
+    setTimeout(fetchStatus, 2000);
+  } catch(e) {}
+  finally { btn.disabled = false; }
+}
+
+// ── websocket (JSON protocol) ──────────────────────────────────
+let allLines = [], ws;
+const MAX_LINES = 2000;
+
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/logs`);
+  ws.onopen  = () => { document.getElementById('wsDot').classList.add('on'); document.getElementById('wsLabel').textContent = 'UPLINK ACTIVE'; };
+  ws.onclose = () => { document.getElementById('wsDot').classList.remove('on'); document.getElementById('wsLabel').textContent = 'LINK DOWN — RECONNECTING...'; setTimeout(connectWS, 3000); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.type === 'init') {
+      allLines = msg.lines || [];
+    } else if (msg.type === 'log') {
+      allLines.push(...(msg.lines || []));
+      if (allLines.length > MAX_LINES) allLines = allLines.slice(-MAX_LINES);
+      if (msg.events && msg.events.length) {
+        OfficeBus.push({ type: 'events', events: msg.events });
+      }
+    }
+    renderLogs();
+  };
+}
+
+let logAutoScroll = true;
+
+function renderLogs() {
+  const out = document.getElementById('logOut');
+  const f = document.getElementById('logFilter').value.toLowerCase();
+  const lines = f ? allLines.filter(l => l.toLowerCase().includes(f)) : allLines;
+  out.innerHTML = lines.map(colorize).join('\n');
+  if (logAutoScroll) out.scrollTop = out.scrollHeight;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const out = document.getElementById('logOut');
+  out.addEventListener('scroll', () => {
+    logAutoScroll = out.scrollHeight - out.scrollTop - out.clientHeight < 60;
+  });
+});
+
+function colorize(l) {
+  const e = l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (/\| ERROR\s+\|/.test(l))   return `<span class="l-error">${e}</span>`;
+  if (/\| WARNING\s+\|/.test(l)) return `<span class="l-warn">${e}</span>`;
+  if (/Result: WIN|\+\$\d/.test(l)) return `<span class="l-success">${e}</span>`;
+  if (/\| INFO\s+\|/.test(l))    return `<span class="l-info">${e}</span>`;
+  if (/\| DEBUG\s+\|/.test(l))   return `<span class="l-debug">${e}</span>`;
+  return e;
+}
+
+function filterLogs() { renderLogs(); }
+
+// ── clock ──────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date().toISOString().replace('T',' ').slice(0,19);
+  document.getElementById('clock').textContent = now + '\nUTC';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── init ───────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  fetchStatus();
+  fetchBrains();
+  setInterval(fetchStatus, 5000);
+  setInterval(fetchBrains, 15000);
+  connectWS();
+});
+</script>
+<script src="/static/vendor/pixi.min.js"></script>
+<script src="/static/scene.js"></script>
+</body>
+</html>
