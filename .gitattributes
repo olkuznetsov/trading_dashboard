@@ -1,0 +1,4 @@
+# Exclude vendored libs + assets from GitHub language stats (Linguist)
+static/vendor/** linguist-vendored
+*.min.js linguist-vendored
+static/assets/** linguist-vendored
